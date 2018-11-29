@@ -15,6 +15,7 @@
 #include "sleeplock.h"
 #include "file.h"
 #include "fcntl.h"
+#include "errno.h"
 
 // Fetch the nth word-sized system call argument as a file descriptor
 // and return both the descriptor and the corresponding struct file.
@@ -442,4 +443,33 @@ sys_pipe(void)
   fd[0] = fd0;
   fd[1] = fd1;
   return 0;
+}
+
+int
+sys_mmap(void)
+{
+  int addr, length, prot, flags, offset;
+  struct file* f = 0;
+  struct proc* p = myproc();
+  if (argint(0, &addr) < 0 || argint(1, &length) < 0 || argint(2, &prot) < 0 ||
+      argint(3, &flags) < 0 || argint(5, &offset) < 0) {
+    return -EINVAL;
+  }
+  if (((flags & MAP_ANONYMOUS) == 0) && argfd(4, 0, &f) < 0) {
+    return -EACCES;
+  }
+  addr = PGROUNDUP(addr);
+  if ((uint)addr >= p->sz || (uint)addr + length > p->sz) {
+    return -EINVAL;
+  }
+  if ((flags & MAP_ANONYMOUS) == 0) {
+    struct inode* ip = f->ip;
+    ilock(ip);
+    if (ip->size <= (uint)offset) {
+      iunlock(ip);
+      return -ENXIO;
+    }
+    iunlock(ip);
+  }
+  return (int)mmap((void*) addr, length, prot, flags, f, offset);
 }

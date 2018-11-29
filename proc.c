@@ -6,13 +6,22 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
-
+#include "errno.h"
+#include "sleeplock.h"
+#include "fs.h"
+#include "file.h"
+#include "stat.h"
+#include "buf.h"
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
 } ptable;
 
 static struct proc *initproc;
+//struct cache_info* mmap_cache;
+//struct cache_info* mmap_list_cache;
+struct mmap_struct mmap_list[10];
+int mmap_index = 0;
 
 int nextpid = 1;
 extern void forkret(void);
@@ -531,4 +540,94 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+// addr must be page-aligned.
+void*
+mmap(void* addr, int length, int prot, int flags, struct file* file,
+    int offset)
+{
+  struct proc *p = myproc();
+  int current_length = 0;
+  char* mem;
+  if ((flags & (MAP_SHARED | MAP_PRIVATE)) == 0) {
+    return (void*)-EINVAL;
+  }
+  if ((flags & MAP_ANONYMOUS) == 0) {
+    if (((prot & PROT_READ) && !(file->readable)) ||
+        ((prot & PROT_WRITE) && !(file->writable))) {
+      return (void*)-EACCES;
+    }
+    if (file->type != FD_INODE) {
+      return (void*)-EACCES;
+    }
+  }
+  for (current_length = 0; current_length < length;
+      current_length += PGSIZE) {
+
+    if (!set_pte_permissions(p->pgdir, addr + current_length,
+          PTE_P | PTE_W)) {
+      return (void*)-ENOMEM;
+    }
+    mem = kalloc();
+    if(mem == 0){
+      return (void*)-ENOMEM;
+    }
+    memset(mem, 0, PGSIZE);
+    if(mappages(p->pgdir, (char*)addr + current_length, PGSIZE, V2P(mem), PTE_W|PTE_U) < 0){
+      return (void*)-ENOMEM;
+    }
+  }
+  //allocuvm(p->pgdir, addr, addr + current_length);
+  //memset(addr, 0, current_length);
+  mmap_list[mmap_index] = (struct mmap_struct) {
+    .start = addr,
+    .length = length,
+    .prot = prot,
+    .flags = flags,
+    .file = (file == 0 ? 0 : filedup(file)),
+    .offset = offset,
+    .users = 1,
+  };
+  if ((flags & MAP_ANONYMOUS) == 0) {
+    uint initial_offset = file->off;
+    file->off = offset;
+    fileread(file, mmap_list[mmap_index].start, PGROUNDUP(length));
+    file->off = initial_offset;
+  }
+  mmap_index++;
+  // struct mmap_struct* mmap = kmem_cache_alloc(mmap_cache);
+  // *mmap = (struct mmap_struct) {
+  //   .start = addr,
+  //   .length = length,
+  //   .prot = prot,
+  //   .flags = flags,
+  //   .file = (file == 0 ? 0 : filedup(file)),
+  //   .offset = offset,
+  //   .users = 1,
+  // };
+  //initlock(&mmap->lock, "mmap");
+  
+  // uint permissions = PTE_P;
+  // if ((prot & PROT_READ) || (prot & PROT_EXEC)) {
+  //   permissions |= PTE_U;
+  // }
+  // if (flags & MAP_SHARED) {
+  //   permissions |= PTE_MMAP;
+  // }
+  // for (current_length = 0; current_length < length;
+  //     current_length += PGSIZE) {
+  //     if (!set_pte_permissions(p->pgdir, addr + current_length,
+  //         PTE_P | PTE_W)) { 
+  //       return (void*)-ENOMEM;
+  //     }
+  // }
+  // struct mmap_list* mmap_list = kmem_cache_alloc(mmap_list_cache);
+  // mmap_list->mmap = mmap;
+
+  // acquire(&proc->mm->lock);
+  // list_add_tail(&mmap_list->list, &proc->mm->mmap_list);
+  // release(&proc->mm->lock);
+
+  return addr;
 }

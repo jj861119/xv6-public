@@ -1,3 +1,4 @@
+struct file;
 struct stat;
 struct rtcdate;
 
@@ -23,6 +24,7 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+void* mmap(void*, int, int, int, struct file*, int);
 
 // ulib.c
 int stat(const char*, struct stat*);
@@ -37,3 +39,5 @@ void* memset(void*, int, uint);
 void* malloc(uint);
 void free(void*);
 int atoi(const char*);
+void* realloc(void*, size_t);
+void* calloc(int, int);

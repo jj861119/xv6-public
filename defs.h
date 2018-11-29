@@ -9,6 +9,7 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+//struct cache_info;
 
 // bio.c
 void            binit(void);
@@ -120,6 +121,7 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
+void*           mmap(void*, int, int, int, struct file*, int);
 
 // swtch.S
 void            swtch(struct context**, struct context*);
@@ -185,6 +187,9 @@ void            switchuvm(struct proc*);
 void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
+int             set_pte_permissions(pde_t* pgdir, void* addr, uint perm);
+int             mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm);
+
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
