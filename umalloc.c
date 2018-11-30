@@ -89,8 +89,9 @@ malloc(uint nbytes)
   }
 }
 
+
 void* 
-realloc(void *ptr, size_t size)
+realloc(void *ptr, uint size)
 {
   void *new;
 
@@ -101,31 +102,24 @@ realloc(void *ptr, size_t size)
     return ptr;
   }
 
-  if(ptr==NULL)
+  if(!ptr)
   {
     new = malloc(size);
 
     //malloc error
-    if(new==NULL)
+    if(!new)
     {
-      return NULL;
+      return (void*) 0;
     }
   }
   else
   {
     new = malloc(size);
-
-    if(ptr.size < size)
-    {
-      memcpy(new,ptr,ptr.size);
-    }
-    else
-    {
-      memcpy(new,ptr,size);
-    }
+    
     free(ptr);
     return new;
   }
+  return (void*) 0;
 };
 
 void *calloc(int n, int size)
@@ -133,7 +127,8 @@ void *calloc(int n, int size)
  int total = n * size;
  void *p = malloc(total);
  
- if (!p) return NULL;
+ if (!p) return (void*) 0;
  
  return memset(p, 0, total);
 }
+

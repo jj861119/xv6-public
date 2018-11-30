@@ -39,5 +39,5 @@ void* memset(void*, int, uint);
 void* malloc(uint);
 void free(void*);
 int atoi(const char*);
-void* realloc(void*, size_t);
+void* realloc(void*, uint);
 void* calloc(int, int);

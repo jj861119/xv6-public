@@ -1,7 +1,3 @@
-//#include "spinlock.h"
-//#include "param.h"
-//#include "file.h"
-#include "mmap.h"
 // Per-CPU state
 struct cpu {
   uchar apicid;                // Local APIC ID
@@ -35,23 +31,6 @@ struct context {
   uint ebp;
   uint eip;
 };
-
-// Info about process’s mmaps.
-struct mmap_struct {
-  char* start; // Better be page-aligned.
-  int length;
-  int prot;
-  int flags;
-
-  struct file* file;
-  int offset;
-
-  int users;
-
-  //struct spinlock lock;
-};
-
-
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 

@@ -5,9 +5,16 @@
 int
 main(int argc, char *argv[])
 {
-  int i;
+  int* p;
+  p=calloc(15,sizeof(int));
+  printf(1,"Address: %d",p);
 
-  for(i = 1; i < argc; i++)
-    printf(1, "%s%s", argv[i], i+1 < argc ? " " : "\n");
+  printf(1,"\n");
+
+  p=(int*)realloc(p,sizeof(int));
+  printf(1,"Address: %d",p);
+
+  printf(1,"\n");
+  
   exit();
 }
