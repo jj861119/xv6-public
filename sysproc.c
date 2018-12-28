@@ -89,3 +89,19 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int
+sys_getpagesize(void)
+{
+  return PGSIZE;
+}
+
+int
+sys_alloc(void)
+{
+  char *type;
+  int count;
+  argstr(0, &type);
+  argint(1, &count);
+  return alloc(type, count);
+}

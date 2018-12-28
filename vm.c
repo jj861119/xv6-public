@@ -57,7 +57,7 @@ walkpgdir(pde_t *pgdir, const void *va, int alloc)
 // Create PTEs for virtual addresses starting at va that refer to
 // physical addresses starting at pa. va and size might not
 // be page-aligned.
-int
+static int
 mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
 {
   char *a, *last;
@@ -385,16 +385,26 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
   return 0;
 }
 
-int
-set_pte_permissions(pde_t* pgdir, void* addr, uint perm)
+int lazyalloc(char *addr)
 {
-  pte_t* entry = walkpgdir(pgdir, addr, 0);
-  if (entry == 0) return 0;
-  // Clear read, write and execute permissions on the entry.
-  *entry = (*entry & ~0xFFF) | (perm & 0xFFF);
-  return 1;
+  char *mem = kalloc();
+  if(mem == 0){
+    return -1;
+  }
+  memset(mem, 0, PGSIZE);
+
+  return mappages(myproc()->pgdir, addr, PGSIZE, V2P(mem), PTE_W | PTE_U);
 }
 
+int setpageperms(pde_t* pgdir, void* va, int perm)
+{
+  pte_t *pte = walkpgdir(pgdir, va, 0);
+  if(pte == 0) {
+    return -1;
+  }
+  *pte = ((*pte & ~0xFFF) | (perm & 0xFFF));
+  return 1;
+}
 
 //PAGEBREAK!
 // Blank page.

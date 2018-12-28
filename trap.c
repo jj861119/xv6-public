@@ -36,6 +36,23 @@ idtinit(void)
 void
 trap(struct trapframe *tf)
 {
+
+  if(tf->trapno == T_PGFLT) {
+    uint va = PGROUNDDOWN(rcr2());
+    if(va < myproc()->sz){
+      if(lazyalloc((char*)va) == -1) {
+        exit();
+      }
+      return;
+    }
+    else if(va >= MMAPBASE && va < myproc()->mmap_sz + MMAPBASE){
+      if(lazymm((char*)va) == -1){
+        exit();
+      }
+      return;
+    }
+  }
+
   if(tf->trapno == T_SYSCALL){
     if(myproc()->killed)
       exit();

@@ -23,7 +23,9 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
-void* mmap(void*, int, int, int, int, int);
+void* mmap(uint, int, uint);
+int getpagesize(void);
+int alloc(char*, int);
 
 // ulib.c
 int stat(const char*, struct stat*);
@@ -38,5 +40,3 @@ void* memset(void*, int, uint);
 void* malloc(uint);
 void free(void*);
 int atoi(const char*);
-void* realloc(void*, uint);
-void* calloc(int, int);

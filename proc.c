@@ -12,6 +12,8 @@
 #include "file.h"
 #include "stat.h"
 #include "buf.h"
+
+
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -168,13 +170,14 @@ growproc(int n)
 
   sz = curproc->sz;
   if(n > 0){
-    if((sz = allocuvm(curproc->pgdir, sz, sz + n)) == 0)
-      return -1;
+    // if((sz = allocuvm(curproc->pgdir, sz, sz + n)) == 0)
+    //   return -1;
+    curproc->sz = sz + n;
   } else if(n < 0){
     if((sz = deallocuvm(curproc->pgdir, sz, sz + n)) == 0)
       return -1;
   }
-  curproc->sz = sz;
+  // curproc->sz = sz;
   switchuvm(curproc);
   return 0;
 }
@@ -538,66 +541,60 @@ procdump(void)
   }
 }
 
-// addr must be page-aligned.
-void*
-mmap(void* addr, int length, int prot, int flags, struct file* file,
-    int offset)
-{
-  struct proc *p = myproc();
-  int current_length = 0;
-  char* mem;
-  if ((flags & (MAP_SHARED | MAP_PRIVATE)) == 0) {
-    return (void*)-EINVAL;
-  }
-  if ((flags & MAP_ANONYMOUS) == 0) {
-    if (((prot & PROT_READ) && !(file->readable)) ||
-        ((prot & PROT_WRITE) && !(file->writable))) {
-      return (void*)-EACCES;
-    }
-    if (file->type != FD_INODE) {
-      return (void*)-EACCES;
-    }
-  }
+void* mmap(uint length, struct file* file, int offset){
 
-  for (current_length = 0; current_length < length; current_length += PGSIZE) {
-    if (!set_pte_permissions(p->pgdir, addr + current_length,
-          PTE_P | PTE_W)) {
-      return (void*)-ENOMEM;
-    }
-  }
-
-  memset(addr, 0, current_length);
-
-  struct mmap_struct *mmap = &(p->mmap_list[p->mmap_counter]);
-  *mmap = (struct mmap_struct){
-    .start = (char*) addr,
+  uint oldsz = myproc()->mmap_sz;
+  struct mmap_struct *mmap = &(myproc()->mmap_list[myproc()->mmap_counter]);
+  myproc()->mmap_counter++;
+  *mmap =(struct mmap_struct) {
+    .start = (char*)(oldsz + MMAPBASE),
     .length = length,
-    .prot = prot,
-    .flags = flags,
-    .file = (file == 0 ? 0 : filedup(file)),
-    .offset = offset, 
+    .f = (file == 0) ? 0 : filedup(file),
+    .offset = offset,
   };
-
-  if ((flags & MAP_ANONYMOUS) == 0) {
-    uint initial_offset = file->off;
+  if(mmap->f != 0) {
+    ilock(file->ip);
     file->off = offset;
-    fileread(file, p->mmap_list[p->mmap_counter].start, PGROUNDUP(length));
-    file->off = initial_offset;
+    iunlock(file->ip);
   }
-
-  p->mmap_counter++;
-  
-
-  for (current_length = 0; current_length < length; current_length += PGSIZE) {
-    mem = kalloc();
-    if(mem == 0){
-      return (void*)-ENOMEM;
-    }
-    memset(mem, 0, PGSIZE);
-    if(mappages(p->pgdir, (char*)(addr + current_length), PGSIZE, V2P(mem), PTE_W|PTE_U) < 0){
-      return (void*)-ENOMEM;
-    }
-  }
-
-   return (void*)addr;
+  myproc()->mmap_sz += PGROUNDUP(length);
+  return (void*)(oldsz + MMAPBASE);
 }
+
+int 
+lazymm(char *addr)
+{
+  for(int i = 0; i < myproc()->mmap_counter; i++){
+    struct mmap_struct *mmap = &myproc()->mmap_list[i];
+    if(addr >= mmap->start && addr < mmap->start + PGROUNDUP(mmap->length)){
+      pde_t* pgdir = myproc()->pgdir;
+      uint va = PGROUNDUP((uint)addr);
+      allocuvm(pgdir, va, va + PGSIZE);
+      if(mmap->f != 0) {
+        fileread(mmap->f, (char*)va, PGSIZE);
+      }
+    }
+  }
+  return 0;
+}
+
+int alloc(char *type, int count)
+{
+  if(strncmp(type, "int", 3) == 0) {
+    cprintf("%d %s\n", sizeof(int) *count, "bytes");
+  }
+  else if(strncmp(type, " char ", 4) == 0){
+    cprintf("%d %s\n", sizeof(char) *count, "bytes");
+  }
+  else if(strncmp(type, "short", 5) == 0){
+    cprintf("%d %s\n", sizeof(short) *count, "bytes");
+  }
+  else if(strncmp(type, " float ", 5) == 0){
+    cprintf("%d %s\n", sizeof(float) *count, "bytes");
+  }
+  else if(strncmp(type, "double", 6) == 0){
+    cprintf("%d %s\n", sizeof(double) *count, "bytes");
+  }
+  return 22;
+}
+

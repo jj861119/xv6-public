@@ -1,7 +1,5 @@
-//#include "spinlock.h"
-//#include "param.h"
-//#include "file.h"
 #include "mmap.h"
+
 // Per-CPU state
 struct cpu {
   uchar apicid;                // Local APIC ID
@@ -36,19 +34,14 @@ struct context {
   uint eip;
 };
 
-// Info about process’s mmaps.
-struct mmap_struct {
-  char* start; // Better be page-aligned.
-  int length;
-  int prot;
-  int flags;
-
-  struct file* file;
-  int offset;
-
-};
-
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+
+struct mmap_struct {
+  char *start;
+  uint length;
+  struct file *f;
+  int offset;
+};
 
 // Per-process state
 struct proc {
@@ -65,9 +58,9 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
-
-  struct  mmap_struct mmap_list[10];
-  int mmap_counter;
+  struct mmap_struct mmap_list[10];
+  uint mmap_counter;
+  uint mmap_sz;
 };
 
 // Process memory is laid out contiguously, low addresses first:
